@@ -50,6 +50,33 @@ wc-scrape initdb                       # create tables + views
 wc-scrape run --year 2010              # scrape one tournament and load it
 wc-scrape run --game 264123 --no-load  # scrape a single match, print, don't load
 wc-scrape run --all                    # all tournaments 1970..present
+wc-scrape run --recent --days 1 --fresh  # current tournament: today + yesterday, live
+```
+
+### Live / scheduled updates
+
+For an ongoing tournament, use `--recent` (only the current tournament's recent dates,
+default today + the prior day) together with `--fresh` (bypass the HTML cache so
+in-progress scores/lineups actually refresh). It's cheap enough to run frequently:
+
+```bash
+wc-scrape run --recent --days 1 --fresh
+```
+
+Not-yet-played matches are skipped automatically (they load once they have data), and the
+load is idempotent. Off-season, it scrapes nothing and exits cleanly.
+
+To automate it, point an external scheduler at that command (the venv's Python). The job is
+a normal headless process; it just needs the repo, the browser, and `.env`. Examples:
+
+```cron
+# Linux cron, hourly (when you deploy to an always-on VM/container):
+0 * * * * cd /srv/world-cup-scraper && .venv/bin/python -m wc_scraper.cli run --recent --days 1 --fresh >> scrape.log 2>&1
+```
+```powershell
+# Windows Task Scheduler, hourly:
+schtasks /Create /TN "WorldCupHourlyScrape" /SC HOURLY ^
+  /TR "C:\path\to\.venv\Scripts\python.exe -m wc_scraper.cli run --recent --days 1 --fresh"
 ```
 
 Add `--no-headless` to watch the browser while debugging. Rendered HTML is cached under

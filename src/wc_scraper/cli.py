@@ -37,6 +37,13 @@ def run(
     year: Optional[int] = typer.Option(None, help="Scrape a single tournament year."),
     game: Optional[str] = typer.Option(None, help="Scrape a single ESPN gameId."),
     all: bool = typer.Option(False, "--all", help="Scrape all years 1970..present."),
+    recent: bool = typer.Option(
+        False, "--recent", help="Scrape only the current tournament's recent dates."
+    ),
+    days: int = typer.Option(1, help="With --recent: how many prior days to include (0=today only)."),
+    fresh: bool = typer.Option(
+        False, "--fresh", help="Bypass the HTML cache (use for live/hourly runs)."
+    ),
     load: bool = typer.Option(True, help="Load results into the database."),
     headless: Optional[bool] = typer.Option(
         None, help="Override headless mode (use --no-headless to watch)."
@@ -51,17 +58,19 @@ def run(
     if load:
         loader, conn = _require_db()
 
-    if not (year or game or all):
-        typer.secho("Specify --year, --game, or --all.", fg=typer.colors.RED)
+    if not (year or game or all or recent):
+        typer.secho("Specify --year, --game, --all, or --recent.", fg=typer.colors.RED)
         raise typer.Exit(code=1)
 
-    with ESPNBrowser() as browser:
+    with ESPNBrowser(use_cache=not fresh) as browser:
         if game:
             # Single match: year is only used for the tournament row; default to 0 if unknown.
             scrape = pipeline.scrape_match(browser, game, year or 0)
             typer.echo(_format_scrape(scrape))
             if conn is not None:
                 loader.load_match(conn, scrape)
+        elif recent:
+            pipeline.run_recent(browser, days=days, conn=conn)
         else:
             years = pipeline.TOURNAMENT_YEARS if all else [year]
             for y in years:
