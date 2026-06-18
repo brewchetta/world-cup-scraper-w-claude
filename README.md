@@ -55,6 +55,38 @@ wc-scrape run --all                    # all tournaments 1970..present
 Add `--no-headless` to watch the browser while debugging. Rendered HTML is cached under
 `WC_CACHE_DIR` (default `.cache/`) so re-runs and parser tweaks don't re-hit ESPN.
 
+## API server
+
+A FastAPI read API lives in `src/wc_scraper/api/` (decoupled from the scraper).
+
+```bash
+pip install -e ".[api]"
+# set BOOTSTRAP_ADMIN_KEY in .env, then:
+wc-api serve                       # http://127.0.0.1:8000  (Swagger at /docs)
+```
+
+- **Guests** can read all `GET` endpoints. **Writes/admin require an API key** sent as
+  `Authorization: Bearer <key>`.
+- **Rate limiting** is tiered and in-memory: guests by IP (`WC_API_GUEST_RPM`), key-holders
+  by key (`WC_API_CLIENT_RPM`).
+- **Keys** are SHA-256-hashed at rest; the plaintext is shown once. Manage them via the CLI
+  (direct DB) or the admin HTTP routes:
+  ```bash
+  wc-api create-key "Acme Corp"      # or --admin
+  wc-api rotate-key 3                 # new secret, old one dies immediately
+  wc-api revoke-key 3
+  wc-api list-keys
+  ```
+  The first admin key is bootstrapped via `BOOTSTRAP_ADMIN_KEY` (recognized as an admin
+  credential), which can then mint others through `POST /admin/keys`.
+
+Read endpoints: `/tournaments`, `/tournaments/{year}`, `/tournaments/{year}/top-scorers`,
+`/teams`, `/players` (`?name=`), `/players/{id}`, `/players/{id}/totals`, `/matches`
+(`?year=`), `/matches/{id}`. Auth: `/me` (verify a key), admin: `/admin/keys`.
+
+> Write endpoints are intentionally not built yet (read-only first). The auth plumbing
+> (`require_client`) is in place so adding them later is straightforward.
+
 ## Data coverage & limitations
 
 This was validated against real ESPN pages. What the **visible DOM** actually yields:

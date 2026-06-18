@@ -70,6 +70,21 @@ CREATE INDEX IF NOT EXISTS idx_pms_player ON player_match_stats (player_id);
 CREATE INDEX IF NOT EXISTS idx_pms_team   ON player_match_stats (team_id);
 CREATE INDEX IF NOT EXISTS idx_matches_tournament ON matches (tournament_id);
 
+-- API access keys. The plaintext key is shown once at creation; only its SHA-256 hash is
+-- stored. key_prefix is the human-readable head of the token, for display/identification.
+CREATE TABLE IF NOT EXISTS api_keys (
+    id           SERIAL PRIMARY KEY,
+    client_name  TEXT NOT NULL,
+    key_prefix   TEXT NOT NULL,
+    key_hash     TEXT NOT NULL UNIQUE,
+    role         TEXT NOT NULL DEFAULT 'client',   -- 'client' | 'admin'
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_used_at TIMESTAMPTZ,
+    revoked_at   TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_api_keys_active ON api_keys (key_hash) WHERE revoked_at IS NULL;
+
 -- Per-tournament totals per player (derived; the future API reads these).
 CREATE OR REPLACE VIEW v_player_tournament_totals AS
 SELECT

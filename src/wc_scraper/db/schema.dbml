@@ -43,6 +43,17 @@ Table matches {
   away_score int
 }
 
+Table api_keys {
+  id int [pk, increment]
+  client_name text [not null]
+  key_prefix text [not null]
+  key_hash text [not null, unique]
+  role text [not null, note: "'client' | 'admin'"]
+  created_at timestamptz [not null]
+  last_used_at timestamptz
+  revoked_at timestamptz
+}
+
 Table player_match_stats {
   id int [pk, increment]
   match_id int [not null, ref: > matches.id]
