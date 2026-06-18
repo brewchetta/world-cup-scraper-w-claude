@@ -1,0 +1,65 @@
+// FIFA World Cup player-stats schema (per-match grain).
+// Mirror of schema.sql for visual rendering (dbdiagram.io / schema skill).
+
+Table tournaments {
+  id int [pk, increment]
+  year int [not null, unique]
+  host text
+  start_date date
+  end_date date
+  winner_team text
+}
+
+Table teams {
+  id int [pk, increment]
+  name text [not null, unique]
+  country_code text
+  confederation text
+}
+
+Table players {
+  id int [pk, increment]
+  espn_athlete_id int [unique]
+  full_name text [not null]
+  dob date
+  primary_position text
+
+  indexes {
+    // partial: only enforced WHERE espn_athlete_id IS NULL (see schema.sql)
+    (full_name, dob) [unique, name: 'uq_players_name_dob']
+  }
+}
+
+Table matches {
+  id int [pk, increment]
+  espn_game_id text [not null, unique]
+  tournament_id int [not null, ref: > tournaments.id]
+  round text
+  kickoff_utc timestamptz
+  venue text
+  home_team_id int [ref: > teams.id]
+  away_team_id int [ref: > teams.id]
+  home_score int
+  away_score int
+}
+
+Table player_match_stats {
+  id int [pk, increment]
+  match_id int [not null, ref: > matches.id]
+  player_id int [not null, ref: > players.id]
+  team_id int [not null, ref: > teams.id]
+  jersey_number int
+  position text
+  is_starter boolean
+  minutes_played int
+  goals int
+  fouls_committed int
+  yellow_cards int
+  red_cards int
+  source_url text
+  scraped_at timestamptz [not null]
+
+  indexes {
+    (match_id, player_id) [unique]
+  }
+}
